@@ -833,52 +833,6 @@ if(NOT WIN32)
 endif()
 install(TARGETS Aegisub DESTINATION bin)
 
-# Optional: build DependencyControl (external repo) and stage its install into Aegisub's automation dir.
-# If you cloned `DependencyControl` next to the Aegisub source tree, this will build/install it and ensure
-# `make install DESTDIR=...` and packaging include its files under $PREFIX/automation.
-include(ExternalProject)
-
-set(DEPENDENCY_CONTROL_DIR ${CMAKE_SOURCE_DIR}/DependencyControl)
-set(DEPENDENCY_CONTROL_BUILD_DIR ${CMAKE_BINARY_DIR}/DependencyControl-build)
-set(DEPENDENCY_CONTROL_STAGED ${CMAKE_BINARY_DIR}/DependencyControl-staged)
-
-if(EXISTS "${DEPENDENCY_CONTROL_DIR}/CMakeLists.txt")
-    # If DependencyControl is a CMake project, add it as a subdirectory so it is built as part of the tree.
-    add_subdirectory("${DEPENDENCY_CONTROL_DIR}" "${DEPENDENCY_CONTROL_BUILD_DIR}")
-    # If the dependency exposes an install target, ensure it runs during top-level install.
-    if(TARGET install)
-        add_custom_target(install-dependencycontrol
-            COMMAND ${CMAKE_COMMAND} --build "${DEPENDENCY_CONTROL_BUILD_DIR}" --target install
-        )
-        add_dependencies(install install-dependencycontrol)
-    endif()
-else()
-    # Fallback: build with ExternalProject (handles Makefile/autotools projects).
-    ExternalProject_Add(DependencyControlEP
-        SOURCE_DIR "${DEPENDENCY_CONTROL_DIR}"
-        CONFIGURE_COMMAND ./autogen.sh && ./configure --prefix=/usr || ${CMAKE_COMMAND} -E echo "no configure"
-        BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
-        INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install DESTDIR="${DEPENDENCY_CONTROL_STAGED}"
-        BUILD_IN_SOURCE 1
-    )
-
-    # When top-level install runs, copy staged DependencyControl install into the Aegisub install prefix under automation.
-    install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory \"${CMAKE_INSTALL_PREFIX}/automation\")")
-    install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory \"${DEPENDENCY_CONTROL_STAGED}\" \"${CMAKE_INSTALL_PREFIX}/automation\")")
-
-    # Create a small custom target that depends on the ExternalProject.  Avoid
-    # directly adding a target-level dependency to the special top-level
-    # `install` target (some generators/versions don't expose it as a normal
-    # target at configure time).  Make the top-level `install` depend on this
-    # custom target if the `install` target exists.
-    add_custom_target(install-dependencycontrol
-        DEPENDS DependencyControlEP
-    )
-    if(TARGET install)
-        add_dependencies(install install-dependencycontrol)
-    endif()
-endif()
-
 # Build translations
 find_package(Gettext)
 option(WITH_TRANSLATION "Build translations" ${GETTEXT_FOUND})
