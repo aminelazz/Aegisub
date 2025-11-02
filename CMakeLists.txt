@@ -865,8 +865,17 @@ else()
     # When top-level install runs, copy staged DependencyControl install into the Aegisub install prefix under automation.
     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory \"${CMAKE_INSTALL_PREFIX}/automation\")")
     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory \"${DEPENDENCY_CONTROL_STAGED}\" \"${CMAKE_INSTALL_PREFIX}/automation\")")
+
+    # Create a small custom target that depends on the ExternalProject.  Avoid
+    # directly adding a target-level dependency to the special top-level
+    # `install` target (some generators/versions don't expose it as a normal
+    # target at configure time).  Make the top-level `install` depend on this
+    # custom target if the `install` target exists.
+    add_custom_target(install-dependencycontrol
+        DEPENDS DependencyControlEP
+    )
     if(TARGET install)
-        add_dependencies(install DependencyControlEP)
+        add_dependencies(install install-dependencycontrol)
     endif()
 endif()
 
