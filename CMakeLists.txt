@@ -865,7 +865,9 @@ else()
     # When top-level install runs, copy staged DependencyControl install into the Aegisub install prefix under automation.
     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory \"${CMAKE_INSTALL_PREFIX}/automation\")")
     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory \"${DEPENDENCY_CONTROL_STAGED}\" \"${CMAKE_INSTALL_PREFIX}/automation\")")
-    add_dependencies(install DependencyControlEP)
+    if(TARGET install)
+        add_dependencies(install DependencyControlEP)
+    endif()
 endif()
 
 # Build translations
